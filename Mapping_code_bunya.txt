@@ -1,0 +1,97 @@
+#Code for mapping transcriptome against genome
+
+#start interactive session on bunya
+salloc --nodes=1 --ntasks-per-node=1 --cpus-per-task=1 --mem=100G --job-name=copy --time=24:00:00 --partition=general --account=a_ortiz_barrientos_coe srun --export=PATH,TERM,HOME,LANG --pty /bin/bash -l
+
+#Load all required modules
+module load picard
+module load fastp
+module load fastqc
+module load bwa
+module load samtools
+module load java
+module load gatk
+module load bcftools
+
+#STEP 1 - Data Prep
+
+#Copy transcript data from RDM into scratch
+cp "/QRISdata/Q3150/Senecio_F11_mRNA/P1_1.fq.gz" "/scratch/user/s4480088/Pool1"
+cp "/QRISdata/Q3150/Senecio_F11_mRNA/P1_2.fq.gz" "/scratch/user/s4480088/Pool1"
+
+#use fastp to trim. unpaired files can be moved to RDM after this step as they arent used later.
+fastp --in1 P1_1.fq.gz --in2 P1_2.fq.gz --out1 P1_1_trimmed.fq.gz --out2 P1_2_trimmed.fq.gz --unpaired1 P1_1_unpaired.fastq.gz --unpaired2 P1_2_unpaired.fastq.gz -q 10 -u 50 -l 50 -h P1.html
+
+#Use fastqc to get a quality report
+fastqc P1_1_trimmed.fq.gz P1_2_trimmed.fq.gz -o P1_qcreport
+
+#Align with bwa. Need to have indexed the reference file (SLv141Asm_Ch20RN.fasta) with "bwa index".
+bwa mem -t 12 -M /scratch/user/s4480088/SLv141Asm_Ch20RN.fasta P1_1_trimmed.fq.gz P1_2_trimmed.fq.gz > P1_aln_pe.bam
+
+#Add read groups
+java -jar $EBROOTPICARD/picard.jar AddOrReplaceReadGroups I=P1_aln_pe.bam O=P1_aln_pe_RG.bam RGLB=lib1 RGPU=unit1 RGSM=20 RGPL=ILLUMINA RGID=1c
+
+#Check that the read groups have been added with no errors
+java -jar $EBROOTPICARD/picard.jar ValidateSamFile I=P1_aln_pe_RG.bam MODE=SUMMARY
+
+#Sort with Samtools
+samtools sort P1_aln_pe_RG.bam -o P1_aln_srt.bam
+
+#Alignment stats report
+samtools flagstat P1_aln_srt.bam &> P1_aln_srt_stats.txt
+
+#Clean the bam file with Picard
+java "-Xmx8g" -jar $EBROOTPICARD/picard.jar CleanSam -Input P1_aln_srt.bam -Output P1_cln_srt.bam
+
+#Mark duplicates with Picard
+java "-Xmx4g" -jar $EBROOTPICARD/picard.jar MarkDuplicates INPUT=P1_cln_srt.bam OUTPUT=P1_PCRm_cln_srt.bam ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READNAME_REGEX=null MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=900 METRIX_FILE=P1_PCRm_cln_srt_metrics
+
+Samtools index P1_PCRm_cln_srt.bam
+
+Samtools coverage P1_PCRm_cln_srt.bam --output P1_coverage.txt
+
+#STEP 2 - Variant Calling
+
+#If not already loaded, module load gatk and module load bcftools
+#Use Haplotype Caller to call variants. Can do all at once but takes a long time. Can do it per chromosome and concatenate the files at the end
+
+#All chromosomes at once
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF
+
+#One chromosome at a time
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch1_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch1
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch2_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch2
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch3_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch3
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch4_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch4
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch5_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch5
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch6_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch6
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch7_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch7
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch8_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch8
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch9_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch9
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch10_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch10
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch11_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch11
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch12_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch12
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch13_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch13
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch14_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch14
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch15_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch15
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch16_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch16
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch17_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch17
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch18_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch18
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch19_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch19
+gatk --java-options "-Xmx8g" HaplotypeCaller --input P1_PCRm_cln_srt.bam --output P1Ch20_vrnt.g.vcf.gz --reference SLv141Asm_Ch20RN.fasta --emit-ref-confidence GVCF -L SLv141Ch20
+
+bcftools concat -f P1Ch1_vrnt.g.vcf.gz P1Ch2_vrnt.g.vcf.gz P1Ch3_vrnt.g.vcf.gz P1Ch4_vrnt.g.vcf.gz P1Ch5_vrnt.g.vcf.gz P1Ch6_vrnt.g.vcf.gz P1Ch6_vrnt.g.vcf.gz P1Ch7_vrnt.g.vcf.gz P1Ch8_vrnt.g.vcf.gz P1Ch9_vrnt.g.vcf.gz P1Ch10_vrnt.g.vcf.gz P1Ch11_vrnt.g.vcf.gz P1Ch12_vrnt.g.vcf.gz P1Ch13_vrnt.g.vcf.gz P1Ch14_vrnt.g.vcf.gz P1Ch15_vrnt.g.vcf.gz P1Ch16_vrnt.g.vcf.gz P1Ch17_vrnt.g.vcf.gz P1Ch18_vrnt.g.vcf.gz P1Ch19_vrnt.g.vcf.gz P1Ch20_vrnt.g.vcf.gz -o P1_vrnt.g.vcf.gz
+
+bcftools index P1_vrnt.g.vcf.gz
+
+#STEP3 - Joint Calling
+
+
+
+
+
+
+
+
+
+
