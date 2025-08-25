@@ -2,10 +2,10 @@
 
 Calculating molecular population statistics
 ```
-salloc --nodes=5 --ntasks-per-node=5 --cpus-per-task=4 --mem=150G --job-name=copy --time=24:00:00 --partition=general --account=a_ortiz_barrientos_coe sru                                                n --export=PATH,TERM,HOME,LANG --pty /bin/bash -l
+salloc --nodes=5 --ntasks-per-node=5 --cpus-per-task=4 --mem=150G --job-name=copy --time=24:00:00 --partition=general --account=a_ortiz_barrientos_coe srun --export=PATH,TERM,HOME,LANG --pty /bin/bash -l
 module load anaconda3
 conda activate pixy
-pixy --stats pi dxy --vcf /scratch/user/s4480088/wgs_dataset_sf1.vcf.gz --populations /scratch/user/s4480088/Populations1.txt --window_size 10000 --n_core                                                s 10 --chromosomes scaffold_1 --output_prefix 'wgs_test1' --output_folder '/scratch/user/s4480088'
+pixy --stats pi dxy --vcf /scratch/user/s4480088/wgs_dataset_sf1.vcf.gz --populations /scratch/user/s4480088/Populations1.txt --window_size 10000 --n_cores 10 --chromosomes scaffold_1 --output_prefix 'wgs_test1' --output_folder '/scratch/user/s4480088'
 ```
 Plotting pixy output
 ```
@@ -124,7 +124,7 @@ pixy_df %>%
 pixy_df %>%
   filter(chromosome == "scaffold_1") %>%
   filter(statistic %in% c("avg_pi")) %>%
-  filter(window_pos_1 >= 35600000, window_pos_2 <= 35961354) %>%  # 🔍 Region filter
+  filter(window_pos_1 >= 35600000, window_pos_2 <= 35961354) %>%  # 
   mutate(chr_position = ((window_pos_1 + window_pos_2)/2)/1e6) %>%  # Mb for x-axis
   ggplot(aes(x = chr_position, y = value, colour = statistic)) +
   geom_line(size = 0.25) +
