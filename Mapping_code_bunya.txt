@@ -1,4 +1,5 @@
 #Code for mapping transcriptome against genome
+#Adapted from code by Kathleen McLay in OBlab
 
 #start interactive session on bunya
 salloc --nodes=1 --ntasks-per-node=1 --cpus-per-task=1 --mem=100G --job-name=copy --time=24:00:00 --partition=general --account=a_ortiz_barrientos_coe srun --export=PATH,TERM,HOME,LANG --pty /bin/bash -l
@@ -85,6 +86,7 @@ bcftools concat -f P1Ch1_vrnt.g.vcf.gz P1Ch2_vrnt.g.vcf.gz P1Ch3_vrnt.g.vcf.gz P
 bcftools index P1_vrnt.g.vcf.gz
 
 #STEP3 - Joint Calling
+
 
 
 
