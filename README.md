@@ -175,3 +175,6 @@ ggplot(smoothed_df, aes(x = chr_position, y = rolling_value, colour = statistic)
   scale_y_continuous(expand = c(0, 0)) +
   scale_colour_brewer(palette = "Set1")
 ```
+#Minor Allele Frequency calc
+
+ plink2 --pfile plink_prefix_path_eQTL --freq --out minor_allele_freq --allow-extra-chr
