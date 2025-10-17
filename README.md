@@ -2,7 +2,7 @@
 
 Calculating molecular population statistics
 ```
-salloc --nodes=5 --ntasks-per-node=5 --cpus-per-task=4 --mem=150G --job-name=copy --time=24:00:00 --partition=general --account=a_ortiz_barrientos_coe srun --export=PATH,TERM,HOME,LANG --pty /bin/bash -l
+salloc --nodes=1 --ntasks-per-node=1 --cpus-per-task=1 --mem=150G --job-name=copy --time=24:00:00 --partition=general --account=a_senv_ege srun --export=PATH,TERM,HOME,LANG --pty /bin/bash -l
 module load anaconda3
 conda activate pixy
 pixy --stats pi dxy --vcf /scratch/user/s4480088/wgs_dataset_sf1.vcf.gz --populations /scratch/user/s4480088/Populations1.txt --window_size 10000 --n_cores 10 --chromosomes scaffold_1 --output_prefix 'wgs_test1' --output_folder '/scratch/user/s4480088'
